@@ -1,0 +1,27 @@
+---
+title: "p8105_hw2_jy3360"
+author: "Candice Yu"
+date: "2023-09-26"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Problem 1
+First, clean the data in pols-month.csv. 
+- Use separate() to break up the variable mon into integer variables year, month, and day; 
+- replace month number with month name; 
+- create a president variable taking values gop and dem, 
+- and remove prez_dem and prez_gop; and remove the day variable.
+
+```{r}
+library(tidyverse)
+pols_month <- read_csv("fivethirtyeight_datasets/pols-month.csv")
+
+unemployment <- read_csv("fivethirtyeight_datasets/unemployment.csv")
+snp <- read_csv("fivethirtyeight_datasets/snp.csv")
+
+```
+
