@@ -9,8 +9,19 @@ output: github_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+```{r, echo = F}
+bfcolor <- function(x, color) {
+  if (knitr::is_latex_output()) {
+    sprintf("\\textcolor{%s}{\\textbf{%s}}", color, x)
+  } else if (knitr::is_html_output()) {
+    sprintf("<span style='color: %s;'><b>%s</b></span>", color, x)
+  } else x
+}
+```
+
 # Problem 1
 First, clean the data in pols-month.csv. 
+
 - Use separate() to break up the variable mon into integer variables year, month, and day; 
 - replace month number with month name; 
 - create a president variable taking values gop and dem, 
@@ -54,7 +65,8 @@ snp <- read_csv("fivethirtyeight_datasets/snp.csv") %>%
 
 ```
 
-Third, tidy the unemployment data so that it can be merged with the previous datasets. 
+Third, tidy the unemployment data so that it can be merged with the previous datasets.
+
 - This process will involve switching from “wide” to “long” format; 
 - ensuring that key variables have the same name; 
 - and ensuring that key variables take the same values.
@@ -78,7 +90,123 @@ Write a short paragraph about these datasets. Explain briefly what each dataset 
 
 Note: we could have used a date variable as a key instead of creating year and month keys; doing so would help with some kinds of plotting, and be a more accurate representation of the data. Date formats are tricky, though. For more information check out the lubridate package in the tidyverse.
 
+`r bfcolor("Answer 1:", "blue")` 
+
 - There are `r nrow(data_1)` rows and `r ncol(data_1)` columns in the dataset. 
-- The years range from `r range(data_1$year)[1]` to `r range(data_1$year)[2]`.
+- The years range from `r range(data_1$year)[1]` to `r range(data_1$year)[2]`. 
 - The key variables contain `r names(data_1)`.
+
+# Problem 2
+Read and clean the Mr. Trash Wheel sheet:
+
+- specify the sheet in the Excel file and to omit non-data entries (rows with notes / figures; columns containing notes) using arguments in read_excel
+- use reasonable variable names
+- omit rows that do not include dumpster-specific data
+- The data include a column for the (approximate) number of homes powered. This calculation is described in the Homes powered note, but not applied to every row in the dataset. Update the data to include a new homes_powered variable based on this calculation.
+```{r}
+library(readxl)
+mr_trash_wheel <- readxl::read_excel("202207 Trash Wheel Collection Data.xlsx", 
+                                  sheet = "Mr. Trash Wheel", 
+                                  range = "A2:N549") %>%
+  janitor::clean_names() %>%
+  drop_na(dumpster) %>%
+  mutate(year = as.integer(year)) %>%
+  mutate(homes_powered = weight_tons*500/30) %>%
+  mutate(trash_wheel = "mr")
+```
+
+
+Use a similar process to import, clean, and organize the data for Professor Trash Wheel and Gwynnda,
+
+- and combine these with the Mr. Trash Wheel dataset to produce a single tidy dataset. 
+- To keep track of which Trash Wheel is which, you may need to add an additional variable to all datasets before combining.
+```{r}
+professor_trash_wheel <- readxl::read_excel("202207 Trash Wheel Collection Data.xlsx", 
+                                  sheet = "Professor Trash Wheel", 
+                                  range = "A2:M96") %>%
+  janitor::clean_names() %>%
+  drop_na(dumpster) %>%
+  mutate(homes_powered = weight_tons*500/30) %>%
+  mutate(trash_wheel = "professor")
+
+gwynnda_trash_wheel <- readxl::read_excel("202207 Trash Wheel Collection Data.xlsx", 
+                                  sheet = "Gwynnda Trash Wheel", 
+                                  range = "A2:K109") %>%
+  janitor::clean_names() %>%
+  drop_na(dumpster) %>%
+  mutate(homes_powered = weight_tons*500/30) %>%
+  mutate(trash_wheel = "gwynnda")
+
+trash_wheel_total <- bind_rows(mr_trash_wheel, professor_trash_wheel, gwynnda_trash_wheel) %>%
+  relocate(trash_wheel)
+
+```
+
+Write a paragraph about these data; you are encouraged to use inline R.
+
+- Be sure to note the number of observations in the resulting dataset, and give examples of key variables. 
+- For available data, what was the total weight of trash collected by Professor Trash Wheel? 
+- What was the total number of cigarette butts collected by Gwynnda in July of 2021?
+
+`r bfcolor("Answer 2:", "blue")` 
+
+- `mr_trash_wheel` contains `r nrow(mr_trash_wheel)` rows and `r ncol(mr_trash_wheel)` columns of data. 
+- `professor_trash_wheel` contains `r nrow(professor_trash_wheel)` rows and `r ncol(professor_trash_wheel)` columns of data. 
+- `gwynnda_trash_wheel` contains `r nrow(gwynnda_trash_wheel)` rows and `r ncol(gwynnda_trash_wheel)` columns of data. 
+- The final data set `trash_wheel_total` contains `r nrow(trash_wheel_total)` rows and `r ncol(trash_wheel_total)` columns of data. The variables are `r names(trash_wheel_total)`.
+- The total weight of trash collected by Professor Trash Wheel is `r sum(professor_trash_wheel$weight_tons)`. 
+- The total number of cigarette butts collected by Gwynnda in July of 2021 is `r as.integer(sum(gwynnda_trash_wheel$cigarette_butts[which(gwynnda_trash_wheel$month == "July" & gwynnda_trash_wheel$year == 2021)]))`. 
+
+# Problem 3
+
+Import, clean, and tidy the dataset of baseline demographics. 
+
+- Ensure that sex and APOE4 carrier status are appropriate encoded (i.e. not numeric), 
+- and remove any participants who do not meet the stated inclusion criteria (i.e. no MCI at baseline). 
+```{r}
+baseline_original <- read_csv("data_mci/MCI_baseline.csv", skip = 1) %>%
+  janitor::clean_names() %>%
+  mutate(sex = recode(sex, `0` = "female", `1` = "male")) %>%
+  mutate(apoe4 = recode(apoe4, `0` = "non-carrier", `1` = "carrier")) 
+
+baseline <- read_csv("data_mci/MCI_baseline.csv", skip = 1) %>%
+  janitor::clean_names() %>%
+  mutate(sex = recode(sex, `0` = "female", `1` = "male")) %>%
+  mutate(apoe4 = recode(apoe4, `0` = "non-carrier", `1` = "carrier")) %>%
+  filter(age_at_onset!= ".")
+
+```
+- Discuss important steps in the import process and relevant features of the dataset. 
+- How many participants were recruited, and of these how many develop MCI? 
+- What is the average baseline age? 
+- What proportion of women in the study are APOE4 carriers?
+
+
+`r bfcolor("Answer 2:", "blue")` 
+
+- During the import process, it's important to skip the first line of the data since it is the dictionary of the variable names. 
+- `baseline` contains `r nrow(baseline)` rows and `r ncol(baseline)` columns of data. 
+- The variables are `r names(baseline)`.
+- `r nrow(read_csv("data_mci/MCI_baseline.csv", skip = 1))` participants were recruited. of these `r nrow(read_csv("data_mci/MCI_baseline.csv", skip = 1))` participants, `r nrow(baseline)` develop MCI. 
+- The average baseline age is `r mean(baseline_original$current_age)`. 
+- The proportion of women in the study who are APOE4 carriers is `r (count(baseline_original[which(baseline_original$sex == "female" & baseline_original$apoe4 == "carrier"),]))/nrow(baseline_original)`
+
+
+Similarly, import, clean, and tidy the dataset of longitudinally observed biomarker values; comment on the steps on the import process and the features of the dataset.
+```{r}
+
+```
+
+Check whether some participants appear in only the baseline or amyloid datasets, and comment on your findings. 
+
+- Combine the demographic and biomarker datasets so that only participants who appear in both datasets are retained, 
+- and briefly describe the resulting dataset; 
+- export the result as a CSV to your data directory.
+
+
+
+
+
+
+
 
