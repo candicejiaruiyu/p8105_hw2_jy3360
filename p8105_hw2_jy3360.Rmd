@@ -168,7 +168,7 @@ Import, clean, and tidy the dataset of baseline demographics.
 - Ensure that sex and APOE4 carrier status are appropriate encoded (i.e. not numeric), 
 - and remove any participants who do not meet the stated inclusion criteria (i.e. no MCI at baseline). 
 ```{r}
-baseline_original <- read_csv("data_mci/MCI_baseline.csv", skip = 1) %>%
+baseline_original <- read_csv("data_mci/MCI_baseline.csv", skip = 1, na = ".") %>%
   janitor::clean_names() %>%
   mutate(sex = recode(sex, `0` = "female", `1` = "male")) %>%
   mutate(apoe4 = recode(apoe4, `0` = "non-carrier", `1` = "carrier")) 
@@ -198,16 +198,26 @@ baseline <- read_csv("data_mci/MCI_baseline.csv", skip = 1) %>%
 Similarly, import, clean, and tidy the dataset of longitudinally observed biomarker values; comment on the steps on the import process and the features of the dataset.
 ```{r}
 library(tidyverse)
-amyloid <- read_csv("data_mci/mci_amyloid.csv", skip = 1) %>%
-  janitor::clean_names() %>%
+amyloid <- read_csv("data_mci/mci_amyloid.csv", skip = 1, na = c("Na", "NA")) %>%  # import the data, skip the first line, correct format of the missing values
+  janitor::clean_names() %>%       # clean the variable names 
   pivot_longer(
-    time_2:time_8,
-    names_to = "time", # new single column for columns time_2 to time_8
+    baseline:time_8,
+    names_to = "time", # new single column for columns baseline to time_8
     names_prefix = "time_", # skip the prefix 
     values_to = "amyloid" # new single column for observed biomarker values
-    )
+    ) %>%
+  mutate(time = recode(time, "baseline" = "0")) %>%      # change the baseline to 0 in time
+  mutate(time = as.integer(time))         # change all time to integers 
   
 ```
+
+
+`r bfcolor("Answer 3.1:", "blue")` 
+
+- The biomarker amyloid dataset includes information on the subject time(in years) elapsed since the study baseline to the visit where biomarker amyloid 42/40 ratio was measured. 
+- `amyloid` includes `r length(unique(amyloid$time))` records at time `r as.integer(unique(amyloid$time))`. The dataset has `r nrow(amyloid)` rows and `r ncol(amyloid)` columns.
+- `amyloid` includes variables: `r names(amyloid)`
+
 
 Check whether some participants appear in only the baseline or amyloid datasets, and comment on your findings. 
 ```{r}
@@ -218,7 +228,7 @@ subset(baseline_original, !(id %in% amyloid$study_id))
 subset(amyloid, !(study_id %in% baseline_original$id))
 ```
 
-`r bfcolor("Answer 3.1:", "blue")` 
+`r bfcolor("Answer 3.2:", "blue")` 
 
 - There are `r length(subset(baseline_original, !(id %in% amyloid$study_id)))` of participants appear only in the baseline dataset but not in the amyloid dataset.
 - There are `r length(unique((subset(amyloid, !(study_id %in% baseline_original$id)))$study_id))` of participants appear only in the amyloid dataset but not in the baseline dataset. 
@@ -232,14 +242,18 @@ Combine the demographic and biomarker datasets so that only participants who app
 - export the result as a CSV to your data directory.
 
 ```{r}
-amyloid_baseline <- inner_join(amyloid, baseline, by = join_by("study_id" == "id"))
-length(unique(amyloid_baseline$study_id))
+amyloid_baseline <- inner_join(amyloid, baseline_original, by = join_by("study_id" == "id"))
 ```
 
-`r bfcolor("Answer 3.2:", "blue")` 
+`r bfcolor("Answer 3.3:", "blue")` 
 
+- The combined dataset `amyloid_baseline` contains `r nrow(amyloid_baseline)` observations and `r ncol(amyloid_baseline)` variables. 
+- There are `r length(unique(amyloid_baseline$study_id))` participants who appear in both datasets. 
+- The dataset includes variables are `r names(amyloid_baseline)`.
 
-
+```{r}
+write_csv(amyloid_baseline, "data_mci/amyloid_baseline.csv")  # export the result as a CSV to your data directory
+```
 
 
 
