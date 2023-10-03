@@ -37,14 +37,10 @@ pols_month <- read_csv("fivethirtyeight_datasets/pols-month.csv") %>%
                         `04` = "Apr", `05` = "May", `06` = "June", 
                         `07` = "July", `08` = "Aug", `09` = "Sep", 
                         `10` = "Oct", `11` = "Nov", `12` = "Dec")) %>%
-  pivot_longer(
-    c(prez_gop, prez_dem),
-    names_to = "politicians",
-    names_prefix = "prez_",
-    values_to = "president"
-  ) %>%
-  select(-"day")
+  mutate(president = recode(prez_gop, "0" = "dem", "1" = "gop", "2" = "gop")) %>%
+  select(-c("day", "prez_gop", "prez_dem"))
 ```
+
 Second, clean the data in snp.csv using a similar process to the above. For consistency across datasets, 
 - arrange according to year and month, 
 - and organize so that year and month are the leading columns.
@@ -83,6 +79,7 @@ Join the datasets by merging snp into pols, and merging unemployment into the re
 ```{r}
 data_1 <- left_join(pols_month, snp, by = c("year", "month")) %>%
   left_join(unemployment, by = c("year", "month"))
+str(data_1)
 ```
 
 
@@ -92,9 +89,18 @@ Note: we could have used a date variable as a key instead of creating year and m
 
 `r bfcolor("Answer 1:", "blue")` 
 
-- There are `r nrow(data_1)` rows and `r ncol(data_1)` columns in the dataset. 
-- The years range from `r range(data_1$year)[1]` to `r range(data_1$year)[2]`. 
-- The key variables contain `r names(data_1)`.
+- There are `r nrow(pols_month)` rows and `r ncol(pols_month)` columns in the `pols_month` dataset. 
+- There are `r nrow(snp)` rows and `r ncol(snp)` columns in the `snp` dataset. 
+- There are `r nrow(unemployment)` rows and `r ncol(unemployment)` columns in the `unemployment` dataset. 
+- There are `r nrow(data_1)` rows and `r ncol(data_1)` columns in the merged dataset `data_1`. 
+- The years range from `r range(pols_month$year)[1]` to `r range(pols_month$year)[2]` in the merged dataset `pols_month`. 
+- The years range from `r range(snp$year)[1]` to `r range(snp$year)[2]` in the merged dataset `snp`.
+- The years range from `r range(unemployment$year)[1]` to `r range(unemployment$year)[2]` in the merged dataset `unemployment`.
+- The years range from `r range(data_1$year)[1]` to `r range(data_1$year)[2]` in the merged dataset `data_1`. 
+- `pols_month`: It contains the data on the political party association of the president. The key variables contain `r names(pols_month)`.
+- `snp`: It contains the data related to the S&P stock market index. The key variables contain `r names(snp)`.
+- `unemployment`: It contains the data on the monthly unemployment rate. The key variables contain `r names(unemployment)`.
+- `data_1`: The key variables contain `r names(data_1)`.
 
 # Problem 2
 Read and clean the Mr. Trash Wheel sheet:
@@ -105,33 +111,32 @@ Read and clean the Mr. Trash Wheel sheet:
 - The data include a column for the (approximate) number of homes powered. This calculation is described in the Homes powered note, but not applied to every row in the dataset. Update the data to include a new homes_powered variable based on this calculation.
 ```{r}
 library(readxl)
-mr_trash_wheel <- readxl::read_excel("202207 Trash Wheel Collection Data.xlsx", 
+mr_trash_wheel <- readxl::read_excel("202309 Trash Wheel Collection Data.xlsx", 
                                   sheet = "Mr. Trash Wheel", 
-                                  range = "A2:N549") %>%
+                                  range = "A2:N586") %>%
   janitor::clean_names() %>%
-  drop_na(dumpster) %>%
   mutate(year = as.integer(year)) %>%
   mutate(homes_powered = weight_tons*500/30) %>%
-  mutate(trash_wheel = "mr")
+  mutate(trash_wheel = "mr") %>%
+  drop_na(dumpster) 
 ```
-
 
 Use a similar process to import, clean, and organize the data for Professor Trash Wheel and Gwynnda,
 
 - and combine these with the Mr. Trash Wheel dataset to produce a single tidy dataset. 
 - To keep track of which Trash Wheel is which, you may need to add an additional variable to all datasets before combining.
 ```{r}
-professor_trash_wheel <- readxl::read_excel("202207 Trash Wheel Collection Data.xlsx", 
+professor_trash_wheel <- readxl::read_excel("202309 Trash Wheel Collection Data.xlsx", 
                                   sheet = "Professor Trash Wheel", 
-                                  range = "A2:M96") %>%
+                                  range = "A2:M108") %>%
   janitor::clean_names() %>%
   drop_na(dumpster) %>%
   mutate(homes_powered = weight_tons*500/30) %>%
   mutate(trash_wheel = "professor")
 
-gwynnda_trash_wheel <- readxl::read_excel("202207 Trash Wheel Collection Data.xlsx", 
+gwynnda_trash_wheel <- readxl::read_excel("202309 Trash Wheel Collection Data.xlsx", 
                                   sheet = "Gwynnda Trash Wheel", 
-                                  range = "A2:K109") %>%
+                                  range = "A2:L157") %>%
   janitor::clean_names() %>%
   drop_na(dumpster) %>%
   mutate(homes_powered = weight_tons*500/30) %>%
@@ -139,7 +144,6 @@ gwynnda_trash_wheel <- readxl::read_excel("202207 Trash Wheel Collection Data.xl
 
 trash_wheel_total <- bind_rows(mr_trash_wheel, professor_trash_wheel, gwynnda_trash_wheel) %>%
   relocate(trash_wheel)
-
 ```
 
 Write a paragraph about these data; you are encouraged to use inline R.
@@ -185,23 +189,54 @@ baseline <- read_csv("data_mci/MCI_baseline.csv", skip = 1) %>%
 `r bfcolor("Answer 2:", "blue")` 
 
 - During the import process, it's important to skip the first line of the data since it is the dictionary of the variable names. 
-- `baseline` contains `r nrow(baseline)` rows and `r ncol(baseline)` columns of data. 
 - The variables are `r names(baseline)`.
-- `r nrow(read_csv("data_mci/MCI_baseline.csv", skip = 1))` participants were recruited. of these `r nrow(read_csv("data_mci/MCI_baseline.csv", skip = 1))` participants, `r nrow(baseline)` develop MCI. 
-- The average baseline age is `r mean(baseline_original$current_age)`. 
-- The proportion of women in the study who are APOE4 carriers is `r (count(baseline_original[which(baseline_original$sex == "female" & baseline_original$apoe4 == "carrier"),]))/nrow(baseline_original)`
+- `r nrow(read_csv("data_mci/MCI_baseline.csv", skip = 1))` participants were recruited. Of those `r nrow(read_csv("data_mci/MCI_baseline.csv", skip = 1))` participants, `r nrow(baseline)` developed MCI. 
+- The average baseline age is `r mean(baseline$current_age)`. 
+- The proportion of women in the study who are APOE4 carriers is `r (count(baseline_original[which(baseline_original$sex == "female" & baseline_original$apoe4 == "carrier"),]))/(count(baseline_original[which(baseline_original$sex == "female"),]))`
 
 
 Similarly, import, clean, and tidy the dataset of longitudinally observed biomarker values; comment on the steps on the import process and the features of the dataset.
 ```{r}
-
+library(tidyverse)
+amyloid <- read_csv("data_mci/mci_amyloid.csv", skip = 1) %>%
+  janitor::clean_names() %>%
+  pivot_longer(
+    time_2:time_8,
+    names_to = "time", # new single column for columns time_2 to time_8
+    names_prefix = "time_", # skip the prefix 
+    values_to = "amyloid" # new single column for observed biomarker values
+    )
+  
 ```
 
 Check whether some participants appear in only the baseline or amyloid datasets, and comment on your findings. 
+```{r}
+# Participants appear only in the baseline dataset but not in the amyloid dataset
+subset(baseline_original, !(id %in% amyloid$study_id))
 
-- Combine the demographic and biomarker datasets so that only participants who appear in both datasets are retained, 
+# Participants appear only in the amyloid dataset but not in the baseline dataset 
+subset(amyloid, !(study_id %in% baseline_original$id))
+```
+
+`r bfcolor("Answer 3.1:", "blue")` 
+
+- There are `r length(subset(baseline_original, !(id %in% amyloid$study_id)))` of participants appear only in the baseline dataset but not in the amyloid dataset.
+- There are `r length(unique((subset(amyloid, !(study_id %in% baseline_original$id)))$study_id))` of participants appear only in the amyloid dataset but not in the baseline dataset. 
+- Participants appear only in the `amyloid` dataset but not in the baseline dataset has a study_id greater than or equal to 484. 
+
+
+
+Combine the demographic and biomarker datasets so that only participants who appear in both datasets are retained, 
+
 - and briefly describe the resulting dataset; 
 - export the result as a CSV to your data directory.
+
+```{r}
+amyloid_baseline <- inner_join(amyloid, baseline, by = join_by("study_id" == "id"))
+length(unique(amyloid_baseline$study_id))
+```
+
+`r bfcolor("Answer 3.2:", "blue")` 
 
 
 
