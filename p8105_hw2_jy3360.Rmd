@@ -245,7 +245,6 @@ Combine the demographic and biomarker datasets so that only participants who app
 amyloid_baseline <- inner_join(amyloid, baseline_original, by = join_by("study_id" == "id"))
 ```
 
-
 `r bfcolor("Answer 3.3:", "blue")` 
 
 - The combined dataset `amyloid_baseline` contains `r nrow(amyloid_baseline)` observations and `r ncol(amyloid_baseline)` variables. 
