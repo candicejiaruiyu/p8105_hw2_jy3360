@@ -246,7 +246,6 @@ amyloid_baseline <- inner_join(amyloid, baseline_original, by = join_by("study_i
 ```
 
 
-
 `r bfcolor("Answer 3.3:", "blue")` 
 
 - The combined dataset `amyloid_baseline` contains `r nrow(amyloid_baseline)` observations and `r ncol(amyloid_baseline)` variables. 
